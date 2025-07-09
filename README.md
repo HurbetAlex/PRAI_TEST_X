@@ -1,97 +1,104 @@
-Twitter Interaction Bot
+# Twitter Interaction Bot
 
-This repository contains a Python application that automates Twitter (X) interactions without using the official API. It logs into your account via Playwright, scrapes the home feed, selects the most engaging tweet, reposts and replies with an AI-generated response, and logs all actions to a SQLite database.
+A Python application that automates Twitter (X) interactions without using the official API. It logs into your account via Playwright, scrapes the home feed, selects the most engaging tweet, reposts and replies with an AI-generated response, and logs actions to a SQLite database.
 
-Features
+## Setup and Environment Configuration
 
-Browser Automation: Uses Playwright to simulate human-like browsing and interaction.
+1. **Clone the Repository**
 
-Cloudflare Bypass: Handles login flow and Cloudflare checks reliably.
+   ```bash
+   git clone <repo-url>
+   cd twitter-bot
+   ```
 
-Feed Scraping: Extracts the latest 20 tweets from the home feed and scores them by likes + retweets.
+2. **Create a Virtual Environment & Install Dependencies**
 
-AI Response: Generates context-aware, human-like replies via OpenAI models (gpt-4 → gpt-3.5-turbo → text-davinci-003 fallback).
+   ```bash
+   python -m venv .venv
+   # Activate the environment:
+   source .venv/bin/activate   # macOS/Linux
+   .\.venv\Scripts\activate  # Windows
 
-Database Logging: Records each session’s handle, tweet content, AI reply, and engagement metrics in SQLite.
+   pip install -r requirements.txt
+   playwright install
+   ```
 
-Config-Driven: All secrets and settings live in a central config.py loaded from .env.
+3. **Configure Environment Variables**
+   Create a file named `.env` in the repository root with the following:
 
-Project Structure
+   ```dotenv
+   # Twitter credentials
+   TWITTER_USERNAME=your_username_or_email
+   TWITTER_PASSWORD=your_password
 
-├── README.md            # This file
-├── config.py            # Central configuration
-├── main.py              # Entry point
-├── bot/
-│   ├── ai.py            # AI reply generation
-│   ├── browser.py       # Playwright login & interaction
-│   ├── scraper.py       # Tweet scraping
-│   └── database.py      # SQLite init & logging
-└── .env                 # Environment variables (not committed)
+   # Optional proxy settings
+   PROXY_URL=socks5://user:pass@proxy.host:port
+   USER_AGENT=Your custom User-Agent string
 
-Setup
+   # OpenAI API key
+   OPENAI_API_KEY=sk-...
 
-Clone the repo
+   # SQLite database file path
+   SQLITE_PATH=twitterbot.sqlite3
 
-git clone <repo-url>
-cd twitter-bot
+   # Retry and timeout settings
+   MAX_RETRIES=2
+   TIMEOUT_SHORT=5000
+   TIMEOUT_LONG=30000
+   SLOW_MO=80
 
-Create a virtual environment & install dependencies
+   # Localization
+   LOCALE=en-US
+   TIMEZONE=America/New_York
+   ```
 
-python -m venv .venv
-source .venv/bin/activate   # Linux/macOS
-.venv\Scripts\activate    # Windows
-pip install -r requirements.txt
-playwright install
+## Instructions on How to Run the Script
 
-**Populate **.env (base directory)
+1. Ensure your `.env` is populated and your virtual environment is active.
+2. Initialize or migrate the database (creates tables if needed):
 
-TWITTER_USERNAME=your_username_or_email
-TWITTER_PASSWORD=your_password
-PROXY_URL=                 # optional
-USER_AGENT=               # optional custom UA
-OPENAI_API_KEY=your_key
-SQLITE_PATH=twitterbot.sqlite3
-MAX_RETRIES=2
-TIMEOUT_SHORT=5000
-TIMEOUT_LONG=30000
-SLOW_MO=80
-LOCALE=en-US
-TIMEZONE=America/New_York
+   ```bash
+   python main.py --init-db
+   ```
+3. Run the bot to perform one interaction cycle:
 
-Run the bot
+   ```bash
+   python main.py
+   ```
+4. (Optional) To save authenticated session and bypass Cloudflare checks later:
 
-python main.py
+   ```bash
+   python save_auth.py
+   ```
 
-How It Works
+## Example of a Successful Repost and AI-Generated Reply
 
-Initialization: main.py loads config, initializes the SQLite database, and launches Playwright.
+```text
+[2025-07-09 18:03:27] Logged in as @YourHandle
+Selected tweet by @FabrizioRomano with 372 likes and 797 retweets:
+> "Club Brugge are still not giving green light to AC Milan final €38m package bid for Ardon Jashari..."
+Reposted and replied:
+> "Exciting times ahead, let's see how this transfer saga unfolds!"
+✅ Action logged to database.
+```
 
-Login: bot/browser.py carries out the login flow, handling both username & password steps and waiting for the home feed.
+## SQL Schema File
 
-Scrape Feed: bot/scraper.py scrolls the feed, grabs the first 20 tweets, and ranks them by engagement.
+```sql
+-- schema.sql
+CREATE TABLE IF NOT EXISTS logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    handle TEXT NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    tweet TEXT NOT NULL,
+    reply TEXT NOT NULL,
+    likes INTEGER DEFAULT 0,
+    retweets INTEGER DEFAULT 0
+);
 
-Generate Reply: bot/ai.py tries OpenAI chat models, falling back to a completion model if needed, with retries.
+CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp);
+```
 
-Interact: bot/browser.py reposts and replies to the top tweet, then returns to the feed.
+---
 
-Log: bot/database.py saves the tweet, reply, and metrics to SQLite.
-
-Customization
-
-Models & Retries: Adjust CHAT_MODELS, COMPLETION_MODEL, and MAX_RETRIES in config.py.
-
-Timeouts & Pace: Tune TIMEOUT_SHORT, TIMEOUT_LONG, and SLOW_MO for your network and machine.
-
-Proxy & UA: Set PROXY_URL and USER_AGENT in .env to use custom proxies or user agents.
-
-Troubleshooting
-
-Login Issues: Ensure .env credentials are correct and that you can log in manually. Increase timeouts if needed.
-
-Cloudflare Check: You may need to manually complete a CF challenge once; consider saving storage state.
-
-OpenAI Errors: Verify your API key and model access. The bot automatically falls back to available models.
-
-License
-
-MIT License © Oleksandr Matiushenko
+For more details, see the code modules in the `bot/` directory and adjust settings in `config.py` as needed.
